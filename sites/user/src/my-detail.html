@@ -1,0 +1,63 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer.html">
+<link rel="import" href="shared-styles.html">
+<link rel="import" href="../bower_components/paper-card/paper-card.html">
+
+<dom-module id="my-detail">
+  <template>
+    <style include="shared-styles">
+      :host {
+        box-sizing: border-box;
+      }
+      #containerCard {
+        padding: 10px;
+        width: calc(100% - 20px);
+        margin: 10px;
+      }
+    </style>
+    <paper-card id="containerCard">
+      <template is="dom-if" if="[[stop]]">
+        <!--<img id="headerImg" src="[[stop.headerImg]]" />-->
+        <div>[[stop.title]]</div>
+        <p>[[_toPrettyTime(stop.startTime)]] - [[_toPrettyTime(stop.endTime)]]</p>
+        <p>[[_toPrettyDescription(stop.description)]]</p>
+      </template>
+      <template is="dom-if" if="[[!stop]]">
+        <div>No stop selected.</div>
+      </template>
+    </paper-card>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'my-detail',
+      properties: {
+        stop: {
+          type: Object
+        }
+      },
+
+      _toPrettyTime: function(time) {
+        var tArray = time.split(':');
+        var suffix = tArray[0] < 12 ? "AM" : "PM";
+        var hour = tArray[0] > 12 ? tArray[0] - 12 : (Number(tArray[0]) ? tArray[0] : 12);
+        return hour+(Number(tArray[1]) ? ":"+tArray[1] : '')+" "+suffix;
+      },
+
+      _toPrettyDescription: function(description) {
+        return description.replace(/[-:%_+.~#?&/=A-z0-9]{1,256}\.[A-z]{2,10}[-@:%_+.~#?&/=A-z0-9]*/g, function(link) {
+          return '<a href="'+(link.match(/^[A-z]+:\/\//) ? '' : 'http://')+link+'" target="_blank">'+link+'</a>';
+        });
+      }
+    });
+  </script>
+</dom-module>

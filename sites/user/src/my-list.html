@@ -1,0 +1,182 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer.html">
+<link rel="import" href="shared-styles.html">
+<link rel="import" href="../bower_components/paper-listbox/paper-listbox.html">
+<link rel="import" href="../bower_components/paper-item/paper-item.html">
+<link rel="import" href="my-detail.html">
+
+<dom-module id="my-list">
+  <template>
+    <style include="shared-styles">
+      :host {
+        display: block;
+        width: 100%;
+        position: relative;
+      }
+      #stopsList {
+        overflow-y: scroll;
+        padding: 0;
+      }
+      #stopsList:focus {
+        outline: none;
+      }
+      .stop-list-item {
+        cursor: pointer;
+      }
+      .stop-list-item:focus {
+        outline: none;
+      }
+      .stop-list-item.iron-selected {
+        background-color: var(--google-grey-300);
+      }
+      #stopDetails {
+        overflow-y: scroll;
+        background-color: var(--google-grey-300);
+        position: absolute;
+        top: 0;
+        right: 0;
+      }
+    </style>
+    <paper-listbox id="stopsList" selected="{{selected}}"></paper-listbox>
+    <my-detail id="stopDetails"></my-detail>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'my-list',
+      properties: {
+        stops: {
+          type: Array,
+          value: function() {
+            return [];
+          },
+          observer: '_stopsChanged'
+        },
+        layoutMobile: {
+          type: Boolean,
+          value: true
+        },
+        selected: {
+          type: Number,
+          value: -1,
+          observer: '_selectedChanged'
+        }
+      },
+
+      _stopsChanged: function() {
+        //clear list
+        Polymer.dom(this.$.stopsList).innerHTML = '';
+
+        var self = this;
+
+        //Add all events to list
+        this.stops.forEach(function(stop) {
+          var item = document.createElement('div');
+          item.classList.add('stop-list-item');
+          item.innerHTML = '<div style="padding: 5px;">' +
+            '<h3 style="margin: 0;">'+stop.title+'</h3>' +
+          '<p style="margin: 0;">'+self._toPrettyTime(stop.startTime)+' - '+self._toPrettyTime(stop.endTime)+'</p>' +
+            '</div>' +
+            '<div style="width: 100%; height: 1px; background-color: grey;"></div>';
+          Polymer.dom(self.$.stopsList).appendChild(item);
+        });
+      },
+
+      _selectedChanged: function() {
+        if(this.selected < 0) {
+          //no stop is selected...
+          this._showMasterView();
+        } else {
+          //they selected a stop...
+          this._showDetailView(this.stops[this.selected]);
+        }
+      },
+
+      _showMasterView: function() {
+        if(this.layoutMobile) {
+          //show the master view, hide the detail view
+          this.$.stopsList.style.width = this.offsetWidth+'px';
+          this.$.stopDetails.style.width = '0px';
+        } else {
+          //show both views
+          this.$.stopsList.style.width = '300px';
+          this.$.stopDetails.style.width = (this.offsetWidth - 300)+'px';
+        }
+
+        //clear the details view
+        this.$.stopDetails.stop = null;
+      },
+
+      _showDetailView: function(stop) {
+        //populate the details view
+        this.$.stopDetails.stop = stop;
+
+        if(this.layoutMobile) {
+          //show the detail view, hide the master view
+          this.$.stopsList.style.width = '0px';
+          this.$.stopDetails.style.width = this.offsetWidth+'px';
+
+          //show the back button
+          this.fire('show-back-button');
+        } else {
+          //show both views
+          this.$.stopsList.style.width = '300px';
+          this.$.stopDetails.style.width = (this.offsetWidth - 300)+'px';
+
+          //hide back button
+          this.fire('hide-back-button');
+        }
+      },
+
+      _toPrettyTime: function(time) {
+        var tArray = time.split(':');
+        var suffix = tArray[0] < 12 ? "AM" : "PM";
+        var hour = tArray[0] > 12 ? tArray[0] - 12 : (Number(tArray[0]) ? tArray[0] : 12);
+        return hour+(Number(tArray[1]) ? ":"+tArray[1] : '')+" "+suffix;
+      },
+
+      _toPrettyDescription: function(description) {
+        return description.replace(/[-:%_+.~#?&/=A-z0-9]{1,256}\.[A-z]{2,10}[-@:%_+.~#?&/=A-z0-9]*/g, function(link) {
+          return '<a href="'+(link.match(/^[A-z]+:\/\//) ? '' : 'http://')+link+'" target="_blank">'+link+'</a>';
+        });
+      },
+
+      _calcMDHeights: function() {
+        var bodyHeight = (window.innerHeight - 65)+'px';
+        this.$.stopsList.style.height = bodyHeight;
+        this.$.stopDetails.style.height = bodyHeight;
+      },
+
+      _calcLayout: function() {
+        this.layoutMobile = (this.offsetWidth < 700);
+        //do this to reflow the layout in case it changed.
+        this._selectedChanged();
+      },
+
+      attached: function() {
+        //calculate the initial height and layout.
+        this._calcMDHeights();
+        this._calcLayout();
+
+        var self = this;
+        //then if the window is resized...
+        window.addEventListener('resize', function() {
+          //calculate the new height
+          self._calcMDHeights();
+
+          //calculate the new layout
+          self._calcLayout();
+        });
+      }
+    });
+  </script>
+</dom-module>

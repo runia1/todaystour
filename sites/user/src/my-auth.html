@@ -1,0 +1,155 @@
+<script>
+window.myAuth = window.myAuth || (function(options) {
+  var lib = {
+    user: null,
+
+    availableOptions: ['apiBase', 'authJWT'],
+    options: {},
+
+    _init: function(options) {
+      for(var key in options) {
+        if(options.hasOwnProperty(key)) {
+          if(this.availableOptions.indexOf(key) === -1) {
+            console.error('Cannot initialize myAuth library with option: ' + key + ', no such option exists.');
+          } else {
+            this.options[key] = options[key];
+
+            if(key === 'authJWT') {
+              if(options[key]) {
+                //set cookie.
+                document.cookie = 'auth=' + this.options.authJWT + '; path=/';
+                //parse payload for user data.
+                var payload = this.options.authJWT.split('.')[1];
+                this.user = JSON.parse(atob(payload)).usr;
+              } else {
+                this.user = null;
+                document.cookie = 'auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC'
+              }
+            }
+          }
+        }
+      }
+
+      //if JWT isn't set, try to grab it from a cookie in the browser
+      if(!this.options.authJWT) {
+        var authJWT = null;
+
+        var name = "auth=";
+        var cArray = document.cookie.split(';');
+        for(var i=0; i<cArray.length; i++) {
+          var c = cArray[i];
+          while (c.charAt(0)==' ') {
+            c = c.substring(1);
+          }
+          if (c.indexOf(name) == 0) {
+            authJWT = c.substring(name.length,c.length);
+            break;
+          }
+        }
+
+        this.setOption('authJWT', authJWT);
+      }
+    },
+
+    getOption: function(key) {
+      return this.options[key];
+    },
+
+    setOption: function(key, value) {
+      if(this.availableOptions.indexOf(key) === -1)  {
+        console.error('Cannot call setOption on myAuth library with option: ' + key + ', no such option exists.');
+      } else {
+        this.options[key] = value;
+
+        if(key === 'authJWT') {
+          if(value) {
+            //set cookie.
+            document.cookie = 'auth=' + this.options.authJWT + '; path=/';
+            //parse payload for user data.
+            var payload = this.options.authJWT.split('.')[1];
+            this.user = JSON.parse(atob(payload)).usr;
+          } else {
+            this.user = null;
+            document.cookie = 'auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC'
+          }
+        }
+      }
+    },
+
+    getJWT: function() {
+      return this.options.authJWT;
+    },
+
+    getAuth: function() {
+      return this.user;
+    },
+
+    //call api with http method, path and data
+    _makeCall: function(method, path, body) {
+      var lib = this;
+
+      return new Promise(function(resolve, reject) {
+        // Do the usual XHR stuff
+        var req = new XMLHttpRequest();
+        req.open(method, path);
+
+        var headers = {
+          "Authorization": 'Bearer ' + lib.options.authJWT,
+          "Content-Type": "application/json", //what we're sending
+          "Accept": "application/json", //what we accept back
+          "Cache-Control": "no-cache" //don't cache anything you butt holes!
+        };
+
+        for(var key in headers) {
+          if(headers.hasOwnProperty(key)) {
+            req.setRequestHeader(key, headers[key]);
+          }
+        }
+
+        req.onload = function() {
+          // This is called even on 404 etc, so check the status
+          if (req.status == 200) {
+
+            // Resolve the promise with the response text
+            resolve(JSON.parse(req.response));
+          } else {
+            // Otherwise reject with the status text
+            // which will hopefully be a meaningful error
+            reject(Error(req.statusText + ': ' + req.response));
+          }
+        };
+
+        // Handle network errors
+        req.onerror = function() {
+          reject(Error("Network Error"));
+        };
+
+        // Make the request, with the json body
+        req.send(JSON.stringify(body));
+      });
+    },
+
+    getTourStopsByLatLng: function(lat, lng, distance) {
+      var path = this.options.apiBase + '/stops?lat='+lat+'&lng='+lng+'&distance='+distance;
+      var body = {};
+      return this._makeCall('GET', path, body);
+    },
+
+    getTourStopsByCityState: function(city, state, distance) {
+      var path = this.options.apiBase + '/stops?city='+city+'&state='+state+'&distance='+distance;
+      var body = {};
+      return this._makeCall('GET', path, body);
+    },
+
+    addTourStop: function(data) {
+      var path = this.options.apiBase + '/stop';
+      var body = data;
+      return this._makeCall('POST', path, body);
+    }
+  };
+
+  lib._init(options);
+
+  return lib;
+})(window.Auth);
+</script>

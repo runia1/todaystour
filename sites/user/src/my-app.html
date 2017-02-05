@@ -1,0 +1,516 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer.html">
+<link rel="import" href="../bower_components/geo-location/geo-location.html">
+<link rel="import" href="../bower_components/app-layout/app-drawer/app-drawer.html">
+<link rel="import" href="../bower_components/app-layout/app-drawer-layout/app-drawer-layout.html">
+<link rel="import" href="../bower_components/app-layout/app-header/app-header.html">
+<link rel="import" href="../bower_components/app-layout/app-header-layout/app-header-layout.html">
+<link rel="import" href="../bower_components/app-layout/app-scroll-effects/app-scroll-effects.html">
+<link rel="import" href="../bower_components/app-layout/app-toolbar/app-toolbar.html">
+<link rel="import" href="../bower_components/app-route/app-location.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+<link rel="import" href="../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="../bower_components/iron-selector/iron-selector.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="my-icons.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/iron-icons/device-icons.html">
+<link rel="import" href="../bower_components/iron-icons/maps-icons.html">
+<link rel="import" href="../bower_components/paper-search-input/paper-search-input.html">
+<link rel="import" href="../bower_components/paper-fab/paper-fab.html">
+<link rel="import" href="../bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="../bower_components/paper-dialog-scrollable/paper-dialog-scrollable.html">
+<link rel="import" href="../bower_components/neon-animation/animations/scale-up-animation.html">
+<link rel="import" href="../bower_components/neon-animation/animations/scale-down-animation.html">
+<link rel="import" href="../bower_components/iron-form/iron-form.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-spinner/paper-spinner-lite.html">
+<link rel="import" href="../bower_components/paper-listbox/paper-listbox.html">
+<link rel="import" href="../bower_components/paper-item/paper-item.html">
+<link rel="import" href="../bower_components/paper-slider/paper-slider.html">
+<link rel="import" href="my-auth.html">
+
+<dom-module id="my-app">
+  <template>
+    <style>
+      :host {
+        --app-primary-color: #4285f4;
+        --app-secondary-color: black;
+
+        --search-toolbar-button-color: #619AF4;
+        display: block;
+      }
+
+      app-header {
+        color: #fff;
+        background-color: var(--app-primary-color);
+      }
+      app-header paper-icon-button {
+        --paper-icon-button-ink-color: white;
+      }
+
+      #searchLocation {
+        background-color: var(--search-toolbar-button-color);
+        color: white;
+        text-transform: none;
+        font-size: 16px;
+        height: 58px;
+        width: 245px;
+        margin-top: 20px;
+      }
+      #searchCity {
+        --search-background-color: var(--search-toolbar-button-color);
+        --search-text-color: var(--search-toolbar-button-color);
+        --search-label-color: white;
+        --search-width: 245px;
+        --search-height: 58px;
+        --search-border-width: 0px;
+      }
+      #searchCityAutoComplete {
+        width: 245px;
+        max-height: 250px;
+        overflow-y: scroll;
+        box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12), 0 3px 1px -2px rgba(0, 0, 0, 0.2);
+        margin-left: 6px;
+      }
+      #searchCityAutoComplete::-webkit-scrollbar {
+        -webkit-appearance: none;
+        width: 7px;
+      }
+      #searchCityAutoComplete::-webkit-scrollbar-thumb {
+        border-radius: 4px;
+        background-color: rgba(0,0,0,.5);
+        -webkit-box-shadow: 0 0 1px rgba(255,255,255,.5);
+      }
+      #searchDistance {
+        width: 256px;
+        margin-top: 40px;
+        --paper-slider-pin-start-color: var(--app-primary-color);
+        --paper-slider-pin-color: var(--app-primary-color);
+        --paper-slider-active-color: var(--app-primary-color);
+        --paper-slider-knob-color: var(--app-primary-color);
+        --paper-slider-knob-start-color: var(--app-primary-color);
+        --paper-slider-knob-start-border-color: var(--app-primary-color);
+      }
+      #addTourStopButton {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        --paper-fab-background: red;
+      }
+      #addTourStopDialog {
+        width: 330px;
+      }
+      .remove-href-styling {
+        color: inherit;
+        text-decoration: none;
+      }
+      .view-selected {
+        background-color: white;
+        color: var(--app-primary-color);
+      }
+      .view-buttons {
+        min-width: inherit;
+        max-width: 35px;
+        height: 35px;
+        padding: 7px;
+      }
+    </style>
+
+    <app-location route="{{route}}"></app-location>
+    <app-route route="{{route}}" pattern="/:page" data="{{routeData}}" tail="{{subroute}}"></app-route>
+
+    <!-- needed to fetch the user's location from the browser -->
+    <geo-location watch-pos high-accuracy latitude="{{lat}}" longitude="{{lng}}"></geo-location>
+
+    <app-drawer-layout fullbleed>
+      <!-- Drawer content -->
+      <app-drawer id="drawer">
+        <app-toolbar>Menu</app-toolbar>
+        <paper-button id="searchLocation" raised>
+          <iron-icon icon="device:gps-fixed" style="margin-right: 5px;"></iron-icon>Search by location
+        </paper-button>
+        <span style="margin-left: 120px; line-height: 40px;">or</span>
+        <paper-search-input id="searchCity" label="Search by city..."></paper-search-input>
+        <paper-listbox id="searchCityAutoComplete" style="display: none;"></paper-listbox>
+        <paper-slider id="searchDistance" pin step=".5" min=".5" max="10" value="{{distance}}"></paper-slider>
+        <span style="margin-left: 55px;">Search radius {{distance}} mi.</span>
+      </app-drawer>
+
+      <!-- Main content -->
+      <app-header-layout>
+        <app-header fixed>
+          <app-toolbar>
+            <paper-icon-button id="openDrawer" icon="my-icons:menu" drawer-toggle></paper-icon-button>
+            <paper-icon-button id="goBack" style="display: none;" icon="arrow-back"></paper-icon-button>
+            <h3 main-title id="mainTitle" style="margin-left: 15px;">Today's Tour</h3>
+            <a class="remove-href-styling" href="/map"><paper-button class="view-buttons view-selected"><iron-icon icon="maps:map"></iron-icon></paper-button></a>
+            <a class="remove-href-styling" href="/list"><paper-button class="view-buttons"><iron-icon icon="view-list"></iron-icon></paper-button></a>
+          </app-toolbar>
+        </app-header>
+
+        <iron-pages selected="[[page]]"
+                    attr-for-selected="name"
+                    fallback-selection="view404"
+                    role="main">
+          <my-map name="map" id="map" lat="[[lat]]" lng="[[lng]]" stops="[[stops]]"></my-map>
+          <my-list name="list" id="list" stops="[[stops]]"></my-list>
+          <my-view404 name="view404"></my-view404>
+        </iron-pages>
+      </app-header-layout>
+    </app-drawer-layout>
+
+    <paper-fab id="addTourStopButton" icon="add" on-tap="_addTourStopButtonClicked"></paper-fab>
+    <paper-dialog modal id="addTourStopDialog" entry-animation="scale-up-animation" exit-animation="scale-down-animation">
+      <h2>Add a Tour Stop</h2>
+      <paper-dialog-scrollable>
+        <form id="addTourStopForm" is="iron-form">
+          <h3>Stop Details</h3>
+          <paper-input id="title" label="Stop Title"></paper-input>
+          <paper-input id="description" label="Description"></paper-input>
+          <paper-input id="startDate" label="Start Date" type="date"></paper-input>
+          <paper-input id="endDate" label="End Date" type="date"></paper-input>
+          <paper-input id="startTime" label="Start Time" type="time" value="08:00"></paper-input>
+          <paper-input id="endTime" label="End Time" type="time" value="22:00"></paper-input>
+          <h3>Stop Location</h3>
+          <paper-input id="name" label="Venue Name"></paper-input>
+          <paper-input id="address" label="Address"></paper-input>
+          <paper-input id="city" label="City"></paper-input>
+          <paper-input id="state" label="State"></paper-input>
+          <paper-input id="zip" label="Zipcode"></paper-input>
+        </form>
+      </paper-dialog-scrollable>
+      <div class="buttons">
+        <paper-spinner-lite id="addTourStopSpinner"></paper-spinner-lite>
+        <paper-button id="addTourStopAddButton" raised on-tap="_addTourStopAddClicked"><iron-icon icon="add" style="margin-right: 3px;"></iron-icon>ADD</paper-button>
+        <paper-button raised dialog-dismiss><iron-icon icon="close" style="margin-right: 3px;"></iron-icon>CLOSE</paper-button>
+      </div>
+    </paper-dialog>
+
+    <paper-dialog modal id="loadingStopsDialog">
+      <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 5px;">
+        <paper-spinner-lite active></paper-spinner-lite>
+        <h3>Loading...</h3>
+      </div>
+    </paper-dialog>
+  </template>
+
+  <!-- include the citylist -->
+  <script src="citylist4.js"></script>
+
+  <script>
+    Polymer({
+      is: 'my-app',
+
+      properties: {
+        page: {
+          type: String,
+          reflectToAttribute: true,
+          observer: '_pageChanged'
+        },
+        debouncer: {
+          type: Object,
+          value: null
+        },
+        itemSelected: {
+          type: Boolean,
+          value: false
+        },
+        lat: {
+          type: Number,
+          value: 43.618881
+        },
+        lng: {
+          type: Number,
+          value: -116.215019
+        },
+        city: {
+          type: String,
+          value: ''
+        },
+        state: {
+          type: String,
+          value: ''
+        },
+        distance: {
+          type: Number,
+          value: 10
+        },
+        stops: {
+          type: Array,
+          value: function() {
+            return [];
+          }
+        },
+        showBack: {
+          type: Boolean,
+          value: false
+        }
+      },
+
+      listeners: {
+        'searchLocation.tap': '_searchLocationClicked',
+        'addTourStopForm.iron-form-presubmit': '_addTourStopFormSubmit',
+        'searchCity.value-changed': '_searchCityValueChanged',
+        'searchCityAutoComplete.iron-select': '_searchCitySelected',
+        'searchCity.paper-search-input-execute': '_searchCityExecute',
+        'list.show-back-button': '_showBackButton',
+        'list.hide-back-button': '_hideBackButton',
+        'goBack.tap': '_goBackClicked'
+      },
+
+      observers: [
+        '_routePageChanged(routeData.page)'
+      ],
+
+      _showBackButton: function() {
+        this.showBack = true;
+        //initially set it to being shown..
+        this._actuallyShowBackButton();
+      },
+
+      _hideBackButton: function() {
+        this.showBack = false;
+        this._actuallyHideBackButton();
+      },
+
+      _goBackClicked: function() {
+        this.showBack = false;
+        this._actuallyHideBackButton();
+        this.$.list.selected = -1; // -1 so that no items are selected.. triggering a switch back to master view.
+      },
+
+      _interceptBrowserBack: function(event) {
+        console.log('history Changed.');
+        console.dir(event);
+      },
+
+      _actuallyShowBackButton: function() {
+        this.$.openDrawer.style.display = 'none';
+        this.$.goBack.style.display = 'block';
+        /*
+        //set back listener.
+        window.addEventListener('popstate', this._interceptBrowserBack);
+        console.log('setting back listener');
+        */
+      },
+
+      _actuallyHideBackButton: function() {
+        this.$.openDrawer.style.display = null; //null so that it removes the inline styling complete.
+        this.$.goBack.style.display = 'none';
+        /*
+        //remove back listener.
+        window.removeEventListener('popstate', this._interceptBrowserBack);
+        console.log('removing back listener');
+        */
+      },
+
+      _addTourStopButtonClicked: function() {
+        this.$.addTourStopDialog.open();
+      },
+
+      _addTourStopAddClicked: function() {
+        this.$.addTourStopForm.submit();
+      },
+
+      _addTourStopFormSubmit: function(event) {
+        event.preventDefault();
+        this._showAddStopSpinner();
+        var self = this;
+
+        //TODO: add validation, either to the input elements or here.
+        var data = {
+          title: this.$.title.value,
+          description: this.$.description.value,
+          startDate: this.$.startDate.value,
+          endDate: this.$.endDate.value,
+          startTime: this.$.startTime.value,
+          endTime: this.$.endTime.value,
+          name: this.$.name.value,
+          address: this.$.address.value,
+          city: this.$.city.value,
+          state: this.$.state.value,
+          zip: this.$.zip.value
+        };
+
+        window.myAuth.addTourStop(data).then(function(result) {
+          self._hideAddStopSpinner();
+          self.$.addTourStopDialog.close();
+        }).catch(function(error) {
+          console.log(error);
+          //TODO: plus display error message.
+          self._hideAddStopSpinner();
+        });
+
+      },
+
+      _showAddStopSpinner: function() {
+        this.$.addTourStopSpinner.active = true;
+        this.$.addTourStopAddButton.style.display = 'none';
+      },
+
+      _hideAddStopSpinner: function() {
+        this.$.addTourStopSpinner.active = false;
+        this.$.addTourStopAddButton.style.display = 'block';
+      },
+
+      _searchCityValueChanged: function(e) {
+        //if an item was just selected, we need to skip the value change event that occurs because of it.
+        if(this.itemSelected) {
+          this.itemSelected = false;
+          return;
+        }
+
+        //no matter what, if the debouncer is set, clear it.
+        if(this.debouncer) {
+          clearTimeout(this.debouncer);
+        }
+
+        var currentCity = e.detail.value.toUpperCase();
+        var autoCompleteBox = this.$.searchCityAutoComplete;
+        if(currentCity.length) {
+          //show the select box.
+          autoCompleteBox.style.display = 'block';
+          //remove all current child nodes.
+          Polymer.dom(autoCompleteBox).innerHTML = '';
+
+          //add progress spinner
+          var spinner = document.createElement('paper-spinner-lite');
+          spinner.active = true;
+          spinner.style.marginLeft = '100px';
+          Polymer.dom(autoCompleteBox).appendChild(spinner);
+          this.debouncer = setTimeout(function() {
+            //remove progress spinner
+            Polymer.dom(autoCompleteBox).removeChild(spinner);
+            for(var i=0; i<cities.length; i++) {
+              if(cities[i].indexOf(currentCity) === 0) {
+                var item = document.createElement('paper-item');
+                item.innerText = cities[i];
+                Polymer.dom(autoCompleteBox).appendChild(item);
+              }
+            }
+          }, 600);
+        } else {
+          //hide the select box.
+          autoCompleteBox.style.display = 'none';
+        }
+      },
+
+      _searchCitySelected: function(e) {
+        var city = e.detail.item.innerText;
+        //hide the listbox
+        this.$.searchCityAutoComplete.style.display = 'none';
+        //set that an item was selected to prevent search loops...
+        this.itemSelected = true;
+        //set the search value to the selected value.
+        this.$.searchCity.value = city;
+        //set the currently selected to none so that future lookups work.
+        this.$.searchCityAutoComplete.selected = -1;
+        //launch the lookup by simulating an enter press on the search bar.
+        this.$.searchCity.executeSearch();
+      },
+
+      _searchCityExecute: function(event) {
+        this.$.loadingStopsDialog.open();
+
+        var self = this;
+        //get the city data.
+        var cityArray = event.detail.value.split(',');
+        this.city = cityArray[0].trim();
+        this.state = cityArray[1].trim();
+
+        //launch the search.
+        window.myAuth.getTourStopsByCityState(this.city, this.state, this.distance).then(function(result) {
+          //close dialog and close drawer.
+          self.$.loadingStopsDialog.close();
+          if (!self.$.drawer.persistent) {
+            self.$.drawer.close();
+          }
+
+          self.$.map.locationShown = false; //don't show current location marker when searching other location.
+          self.stops = result.data;
+        }).catch(function(error) {
+          //TODO: add an error message.
+          console.log(error);
+        });
+      },
+
+      _searchLocationClicked: function() {
+        this.$.loadingStopsDialog.open();
+
+        var self = this;
+        var sendRequest = function() {
+          if(self.lat && self.lng) {
+            window.myAuth.getTourStopsByLatLng(self.lat, self.lng, self.distance).then(function(result) {
+              //close dialog and close drawer.
+              self.$.loadingStopsDialog.close();
+              if (!self.$.drawer.persistent) {
+                self.$.drawer.close();
+              }
+
+              self.$.map.locationShown = true; //show current location marker when searching by current location.
+              self.stops = result.data;
+            }).catch(function(error) {
+              //TODO: add an error message.
+              console.log(error);
+            });
+          } else {
+            setTimeout(sendRequest, 100);
+          }
+        };
+
+        sendRequest();
+      },
+
+      _routePageChanged: function(page) {
+        this.page = page || 'map';
+
+        var buttons = Polymer.dom(this.root).querySelectorAll('.view-buttons');
+        buttons.forEach(function(button) {
+          var link = button.parentNode.href.substr(button.parentNode.href.lastIndexOf('/')+1);
+          if(link === this.page) {
+            button.classList.add('view-selected');
+          } else {
+            button.classList.remove('view-selected');
+          }
+        }, this); //pass this in so it has the right scope to use as "this"
+
+        if(this.showBack) {
+          switch(this.page) {
+            case 'map':
+              //hide the back button
+              this._actuallyHideBackButton();
+              break;
+            case 'list':
+              //show the back button
+              this._actuallyShowBackButton();
+              break;
+          }
+        }
+
+        if (!this.$.drawer.persistent) {
+          this.$.drawer.close();
+        }
+      },
+
+      _pageChanged: function(page) {
+        // Load page import on demand. Show 404 page if fails
+        var resolvedPageUrl = this.resolveUrl('my-' + page + '.html');
+        this.importHref(resolvedPageUrl, null, this._showPage404, true);
+      },
+
+      _showPage404: function() {
+        this.page = 'view404';
+      }
+    });
+  </script>
+</dom-module>

@@ -11,6 +11,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <link rel="import" href="../bower_components/polymer/polymer.html">
 <link rel="import" href="shared-styles.html">
 <link rel="import" href="../bower_components/paper-card/paper-card.html">
+<link rel="import" href="../bower_components/vaadin-icons/vaadin-icons.html">
+<link rel="import" href="../bower_components/iron-icons/maps-icons.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
 
 <dom-module id="my-detail">
   <template>
@@ -23,13 +26,30 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         width: calc(100% - 20px);
         margin: 10px;
       }
+      #eventImg {
+        width: 100%;
+      }
+      #actionButtons {
+        float: right;
+      }
+      #navIcon {
+        color: dodgerblue;
+      }
+      #title {
+        margin-top: 5px;
+      }
+
     </style>
     <paper-card id="containerCard">
       <template is="dom-if" if="[[stop]]">
-        <!--<img id="headerImg" src="[[stop.headerImg]]" />-->
-        <div>[[stop.title]]</div>
+        <img id="eventImg" src="[[stop.eventPicture]]" />
+        <div id="actionButtons">
+          <a href="https://facebook.com/events/[[stop.id]]" target="_blank"><paper-icon-button icon="vaadin-icons:facebook"></paper-icon-button></a>
+          <paper-icon-button id="navIcon" icon="maps:navigation"></paper-icon-button>
+        </div>
+        <h3 id="title">[[stop.title]]</h3>
         <p>[[_toPrettyTime(stop.startTime)]] - [[_toPrettyTime(stop.endTime)]]</p>
-        <p>[[_toPrettyDescription(stop.description)]]</p>
+        <p id="description">[[stop.description]]</p>
       </template>
       <template is="dom-if" if="[[!stop]]">
         <div>No stop selected.</div>
